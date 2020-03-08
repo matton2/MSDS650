@@ -1,0 +1,200 @@
+---
+title: "Week1 DataAnalytics"
+author: "Matthew Onimus"
+date: "3/8/2020"
+output:
+  html_document:
+    theme: "spacelab"
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scoll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+packages <- c("tidyverse", "kableExtra", 'data.table')
+purrr::walk(packages, library, character.only = TRUE)
+```
+
+## Let's Investigate the Iris Dataset 
+
+I have already loaded in the packages `r paste(packages, collapse = ", ")` to be used for this anaylsis.  After paging through the assignment it seems pretty straightforward so I will probably not be adding quite that much text to this document and will execute most of the assignment in the same code chunk. 
+
+
+```{r soMuchCode}
+
+# check out the structure of iris
+str(iris)
+
+# find some summary stats of iris
+summary(iris)
+
+# use head to display the first n = 10 rows with some kable style to make it look pretty
+kable(head(iris, n = 10)) %>% kable_styling()
+
+# i already loaded up the data.table package at the start of the script, I am going to perform the analysis both the example way and also the tidyverse way just to make sure I can do it
+
+DT <- as.data.table(iris)
+
+# Begin the summary functions, I personally find the tidyverse way so much easier to read and code review
+
+# summary exercise 1
+DT[,mean(Sepal.Length), by=Species]
+
+iris %>% 
+  group_by(Species) %>% 
+  summarise(meanSepalLength = mean(Sepal.Length)) %>% 
+  kable() %>% 
+  kable_styling()
+
+# summary exercise 2
+
+DT[, mean(Sepal.Length), by = substring(Species, 1, 1)]
+
+iris %>% 
+  mutate(Species = str_sub(Species, 1, 1)) %>% 
+  group_by(Species) %>% 
+  summarise(meanSepalLength = mean(Sepal.Length)) %>% 
+  kable() %>% 
+  kable_styling()
+
+# summary exercise 3
+
+DT[, .N, by = 10 * round(Sepal.Length * Sepal.Width/10)]
+
+iris %>% 
+  mutate(newVariable = 10 * round(Sepal.Length * Sepal.Width/10)) %>% 
+  group_by(newVariable) %>% 
+  summarise(totalCount = n()) %>% 
+  kable() %>% 
+  kable_styling()
+
+# summary exercise 4
+
+DT[, .(Count = .N), by = .(Area = 10 * round(Sepal.Length * Sepal.Width/10))]
+
+# see exercise about for tidyverse version
+
+# Chaining exercises, same as above DT and tidyverse below
+
+# chaining exercise 1
+
+DT[, .(Sepal_length = median(Sepal.Length),
+       Sepal_width = median(Sepal.Width),
+       Petal_length = median(Petal.Length),
+       Petal_width = median(Petal.Width)),
+   by = Species][order(-Species)]
+
+iris %>% 
+  group_by(Species) %>% 
+  summarize(Sepel_length = median(Sepal.Length),
+         Sepal_width = median(Sepal.Width),
+         Petal_length = median(Petal.Length),
+         Petal_width = median(Petal.Width)) %>% 
+  arrange(desc(Species)) %>% 
+  kable() %>% 
+  kable_styling()
+
+# chaining exercise 2
+
+DT[, .(Sepal_length = mean(Sepal.Length),
+       Sepal_width = mean(Sepal.Width),
+       Petal_length = mean(Petal.Length),
+       Petal_width = mean(Petal.Width)),
+   by = Species][order(Species)]
+
+iris %>% 
+  group_by(Species) %>% 
+  summarize(Sepel_length = mean(Sepal.Length),
+         Sepal_width = mean(Sepal.Width),
+         Petal_length = mean(Petal.Length),
+         Petal_width = mean(Petal.Width)) %>% 
+  arrange(Species) %>% 
+  kable() %>% 
+  kable_styling()
+
+# Subsetting exercise, same as above
+
+# subsetting exercise 1
+
+DT[, lapply(.SD, mean), by = Species]
+
+iris %>% 
+  group_by(Species) %>% 
+  summarise_all(funs(mean)) %>% 
+  kable() %>% 
+  kable_styling()
+
+
+# subsetting exercise 2
+
+DT[, lapply(.SD, max), by = Species]
+
+iris %>% 
+  group_by(Species) %>% 
+  summarise_all(funs(max)) %>% 
+  kable() %>% 
+  kable_styling()
+
+# Additional commands section
+
+# all the DT commands first
+
+
+
+DT1 <- DT[Species == 'virginica']
+
+head(DT1)
+
+DT2 <- DT[Species %in% c('virginica', 'versicolor')]
+
+head(DT2)
+tail(DT2)
+
+setnames(DT, gsub("^Sepal[.]", "",names(DT)))
+DT <- DT[,grep("^Petal", names(DT)) := NULL]
+
+head(DT)
+
+DT[Width * Length > 20]
+
+
+# some tidyverse commands
+
+iris %>% 
+  filter(Species == 'virginica') %>% 
+  head() %>% 
+  kable() %>% 
+  kable_styling()
+
+
+iris %>% 
+  filter(Species %in% c("virginica", "versicolor")) %>% 
+  slice(1:5, 95:100) %>% 
+  kable() %>% 
+  kable_styling()
+
+iris1  <- iris %>%
+  set_names(~ str_replace_all((.), "^Sepal[.]", "")) 
+
+irisFinal <- iris1 %>% 
+  set_names(~ str_replace_all((.), "Petal[.]", "")) %>%
+  bind_rows(iris1) %>% 
+  select(-c(Petal.Length, Petal.Width)) 
+
+irisFinal %>% 
+  head() %>% 
+  kable() %>% 
+  kable_styling()
+
+irisFinal %>% 
+  filter(Width * Length > 20) %>% 
+  head() %>% 
+  kable() %>% 
+  kable_styling()
+  
+  
+
+```
