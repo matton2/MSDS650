@@ -1,0 +1,159 @@
+---
+title: "week2AssignmentEDA"
+author: "Matthew Onimus"
+date: "3/19/2020"
+output:
+  html_document:
+    theme: "spacelab"
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scoll: false
+---
+
+```{r setup, include=FALSE}
+packages <- c("tidyverse", "DT")
+purrr::walk(packages, library, character.only = TRUE)
+```
+
+## Data Introduction
+
+Today we will be exploring a data table in the r package `nycflights13`.  This packages contains 5 tables, the one of interst to us will be the flights data.  The other 4 tables contain meta information; I may use some of those tables a future exercise.  The flights table contains on-time data from all flights departing NYC in 2013 [link](https://cran.r-project.org/web/packages/nycflights13/nycflights13.pdf).
+
+Firstly, lets load the flights table into our environment and take a look at the head and tail.
+
+```{r loadData}
+
+flights <- nycflights13::flights
+
+# we'll have r do some math for us since we may not now how many observations our data has
+datatable(sample_n(flights, size = 300))
+  
+  
+
+
+```
+
+The dataset consists of `r NCOL(flights)` variables and `r NROW(flights)` observations; it is a pretty massive data set.  As you can imagine, the number of questions you use this data set to answer is also massive.  I will attempt to pull about the delay and arrival delay data based on month to see if month impact either delay situation.  I will then attempt to expand upon that is see if carrier plays a role as well.  The columns which I will `select` out for this analysis will be `month`, `dep_delay`, `arr_delay`, and `carrier`.  
+
+## Let's Get to Work!
+
+Let's `select` the columns I will need and save them in their own dataframe.
+
+```{r cleanData}
+
+cleanFlights <- flights %>% 
+  select(month, dep_delay, arr_delay, carrier)  #just select the columns i care about
+
+summary(cleanFlights)
+
+```
+
+### Question 1
+
+Now that the easy part is done, we should probably make some summary statistics and a plot or two to answer my first question: "Does month impact delay times?"  **Remember to handle those nasty `NA` values as we go.
+
+```{r question1Data}
+
+monthFlights <- cleanFlights %>% 
+  mutate(month = as.factor(month)) %>% 
+  group_by(month) %>% 
+  summarise(avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+            avg_arr_delay = mean(arr_delay, na.rm = TRUE))
+
+datatable(monthFlights)
+
+
+
+
+```
+
+Well I really thought that the winter months in NYC would have been the worst for both delays, but that is not the case at all.  July has the highest average delay for both departures and arrivals.  Could be due to the total number of flights in that month (vacations, etc.)?  Perhaps we should explore that a little later.  For now, there seems to be some correlation between the two delays which means its time to make some plots!
+
+```{r question1Plots}
+
+monthFlights %>% 
+  gather(avg_dep_delay, avg_arr_delay, key = 'delayType', value = 'time') %>% 
+  ggplot(., aes(x = month, y = time, fill = delayType)) +
+  geom_col(position = 'dodge') +
+  theme_classic() +
+  labs(
+    title = "Average Delay by Month",
+    subtitle = "Colored by Type of Delay",
+    y = "Average Delay Time (mins)",
+    x = "Month"
+  )
+
+
+ggplot(monthFlights, aes(x = avg_dep_delay, y = avg_arr_delay)) +
+  geom_point(aes(color = month)) +
+  geom_smooth(method = 'lm', se = FALSE, size = 0.3, linetype = 'dashed') +
+  theme_classic() +
+  labs(
+    x = "Average Depature Delay (mins)",
+    y = "Average Arrival Delay (mins)",
+    title = "Average Delays By Month"
+  )
+
+
+
+
+
+```
+
+### Question 2
+
+We need to add a second grouping variable to see if some airline carriers are consistently late or does that fluctate as well. 
+
+```{r question2Data}
+
+carrierFlights <- cleanFlights %>% 
+  mutate(month = as.factor(month),
+         carrier = as.factor(carrier)) %>% 
+  group_by(month, carrier) %>% 
+  summarise(totalFlights = n(),
+            avg_dep_delay = mean(dep_delay, na.rm = TRUE),
+            avg_arr_delay = mean(arr_delay, na.rm = TRUE)) %>% 
+  filter(totalFlights > 1500)
+
+datatable(carrierFlights)
+
+
+```
+
+Time for some plots to see if we can make sense of this data.
+
+
+```{r plotsQuestion2}
+
+ggplot(carrierFlights, aes(x = month, y = avg_arr_delay, color = carrier, size = totalFlights)) +
+  geom_point() +
+  scale_color_brewer(palette = 'Dark2') +
+  theme_classic() +
+  labs(
+    title = "Arrival Flight Delay Average per Month Colored by Carrier \nand Size by Total Flights",
+    subtitle = "Total Flights > 1500 per month",
+    x = "Month",
+    y = "Average Arrival Delay (mins)"
+  )
+
+
+ggplot(carrierFlights, aes(x = month, y = avg_dep_delay, color = carrier, size = totalFlights)) +
+  geom_point() +
+  scale_color_brewer(palette = 'Dark2') +
+  theme_classic() +
+  labs(
+    title = "Departure Flight Delay Average per Month Colored by Carrier \nand Size by Total Flights",
+    subtitle = "Total Flights > 1500 per month",
+    x = "Month",
+    y = "Average Departure Delay (mins)"
+  )
+  
+
+```
+
+
+## Some Discussion
+
+It was clean from the column plot that my initial assumption of winter months causing more delays.  Those summer months seem to be pretty terrible for flying out of NYC.  I thought they may have been a correlation between departure and arrival times and turns out to be partly true.  When diving into the carrier data, it was clear that I never, ever want to flow EV.  They are consisently the worst delayed (departure and arrivals) all of carries with greater than 1500 flights. 

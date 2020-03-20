@@ -1,0 +1,82 @@
+---
+title: "week2AssignmentANOVA"
+author: "Matthew Onimus"
+date: "3/20/2020"
+output:
+  html_document:
+    theme: "spacelab"
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scoll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+packages <- c("tidyverse", "DT")
+purrr::walk(packages, library, character.only = TRUE)
+```
+
+## r-tutor Factorial Design
+
+This section will recreate the factorial experimental design from r-tutor[http://www.r-tutor.com/elementary-statistics/analysis-variance/factorial-design].  They recommend you download the csv and then read back in; I am just going to hardcode the data in so anyone can run the script without needing the csv file.
+
+```{r data}
+
+Item1 <- c(25,36,31,26,51,47,47,52)
+Item2 <- c(39,42,39,35,43,39,53,46)
+Item3 <- c(36,24,28,29,42,36,32,33)
+
+df3 <- tibble(
+  Item1 = Item1,
+  Item2 = Item2,
+  Item3 = Item3
+)
+
+
+```
+
+### Begin Exercise
+
+```{r Exericise}
+
+r <- c(t(as.matrix(df3)))
+
+r
+
+f1 <- c("Item1", "Item2", "Item3")
+f2 <- c("East", "West")
+
+k1 <- length(f1)
+k2 <- length(f2)
+
+n <- 4
+
+tm1 <- gl(k1, 1, n*k1*k2, factor(f1))
+tm1
+tm2 <- gl(k2, 12, n*k1*k2, factor(f2)) # this line was wrong in the tutorial, i think this is now correct based on having the same anova results
+tm2
+
+av <- aov(r ~ tm1 * tm2)
+
+summary(av)
+
+```
+
+This analysis is telling me that all the factors (Items, Area, and Interaction) are statistically different based on the probabilty value.  Statistically different means that the differences observered here are unlikely to be a result of random change.  Whether their differences mean anything in real-life circumstances, I cannot say.
+
+## Discussion Questions
+
+Analysis of variance allows us to explore if the means of data are different.  ANOVA uses an F-test (F value) to determine whether the differences between a factor (item1, item2, etc.) are greater than the difference within the factor (all values for item1).  ANOVA allows us to ask questions whether the mean of populations are the same or different.  This analysis is helpful in determining if a treatment is effective or if a parameter for a reaction causes a change.    
+
+By using experiment desing (in place of one factor at a time (OFAT)), we are able to determine both differences in populations based on a single factor and the interaction effect between multiple factors.  For instance, if I have a reaction that I can control concentration and temperature for and only execute OFAT experiments, I will never be able to tell if the two factors interact with each other (i.e. do I see a dependence on temperature vs concentration for yield for example).  The same can be true for testing dosage amount and age group when screening a new treatment option.
+
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

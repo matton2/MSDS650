@@ -198,3 +198,63 @@ irisFinal %>%
   
 
 ```
+## Choose Your Own Adventure
+
+I have choosen the a dataset from Lehman baseball stats.  I have used this data set before in MSDS 600 to do some prediction.  Here I will just execute some filters and grouping to see some summary stats.
+
+```{r baseballTime}
+
+# first thing is to bring in the batting stats and the appearances since I want to pull about some position stuff (maybe)
+baseballStat <- Lahman::Batting
+baseballPlayers <- Lahman::Appearances
+
+# there are over 100,000 observations in batter stats, here are the summary stats
+summary(baseballStat) %>% 
+  kable() %>% 
+  kable_styling()
+
+# first think I want to do is just take a look at stats from 1990 and later and then join with the playerIDs, next i am going to remove any observations with less than 100 abs, next I want to gather the Pos data so i do some filtering on that, next i will remove some columns i dont care about, and finally i filter out all the games that that player played less than 10 games at
+
+baseball1990 <- baseballStat %>% 
+  filter(yearID >= 1990) %>% 
+  left_join(baseballPlayers) %>% 
+  filter(AB > 100) %>% 
+  gather(G_c, G_1b, G_2b, G_3b, G_ss, G_of, G_dh, key = 'pos', value = 'GP') %>% 
+  select(-c(G_all, GS, G_batting, G_defense, G_p, G_lf, G_rf, G_cf, G_ph, G_pr, stint, teamID, lgID)) %>% 
+  filter(GP > 10)
+
+# now that we have this nice little dataframe, lets do some stats based on position grouping
+
+baseball1990 %>% 
+  group_by(pos) %>% 
+  summarise(avgHr = mean(HR)) %>% 
+  kable() %>% 
+  kable_styling()
+
+# lets do some additional grouping and see if we can see some trend in terms of OF HR and SO, I think we are going to see something interesting
+
+baseball1990 %>% 
+  filter(pos == 'G_of') %>% 
+  group_by(yearID) %>% 
+  summarise(avgHR = mean(HR),
+            avgSO = mean(SO)) %>% 
+  kable() %>% 
+  kable_styling()
+
+# finally, let's take a look at min and max values for SO and HR for OF again to see if we can see a trend there
+
+baseball1990 %>% 
+  filter(pos == "G_of") %>% 
+  group_by(yearID) %>% 
+  summarize(minHR = min(HR),
+            maxHR = max(HR),
+            minSO = min(SO),
+            maxSO = max(SO)) %>% 
+  kable() %>% 
+  kable_styling()
+
+
+
+```
+
+What we have learned, the Lahman dataset is definitely one of my favorites.  Average outfielder power has not increased really since 1990 but the strikeouts certainly have.
