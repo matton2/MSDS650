@@ -1,0 +1,168 @@
+---
+title: "week3AssignmentStatTesting"
+author: "Matthew Onimus"
+date: "3/20/2020"
+output:
+  html_document:
+    theme: "spacelab"
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scoll: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+packages <- c("tidyverse", "DT", "reshape2")
+purrr::walk(packages, library, character.only = TRUE)
+```
+
+## Exercises from Attachments
+
+Replication of exercises in assignment attachment.
+
+```{r attachmentExer1}
+
+x <- rnorm(1000, mean = 0)
+
+shapiro.test(x)
+
+```
+
+```{r attachmentExer2}
+
+datatable(CO2)
+
+y <- CO2[,5]
+
+shapiro.test(y)
+
+
+```
+
+## R-Bloggers Example
+
+Here I will recreate the r-bloggers example[https://www.r-bloggers.com/normality-and-testing-for-normality/] for testing normality.  
+
+**A seed should be set to ensure the random calls (`rnorm` and `sample`) produce the same results each time**
+
+**The function in the blog is incorrect.  The input either needs to be changed to `my.data` (currently it is `data`) or the reference call in the function needs to be updated to `data` (currently `my.data`).  I have removed all the `my.data` calls from the function and replaced with `data` as that is the more convential way to code the function.  If this function was called as it is written in the blog and `my.data` was not in the global environment, it would break.**
+
+
+```{r rBloggers}
+
+set.seed(2)
+
+#this function was not properly written in the blog post.  the input either needs to be my.data or the input call in the function needs to be data...
+assignVector <- function(data, n = 1000) {
+  
+  p.5 <- replicate(n, expr = shapiro.test(sample(data, 5, replace=TRUE))$p.value)
+  p.10 <- replicate(n, expr = shapiro.test(sample(data, 10, replace=TRUE))$p.value)
+  p.1000 <- replicate(n, expr = shapiro.test(sample(data, 1000, replace=TRUE))$p.value)
+  
+  p.df <- cbind(p.5, p.10, p.1000)
+  p.df <- as.data.frame(p.df)
+  colnames(p.df) <- c("5 samples","10 samples","1000 samples")
+  p.df.m <- melt(p.df)
+  
+  p.df.m <- transform(p.df.m, variable = factor(variable, levels = c("5 samples","10 samples","1000 samples")))
+  return(p.df.m)  
+}
+
+n.rand <- 100000
+n.test <- 10000
+my.data <- rnorm(n.rand)
+p.df.m <- assignVector(my.data, n = n.test)
+
+ggplot(p.df.m, aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(variable ~ ., scales = 'free_y') +
+  xlim(0,1) +
+  theme_classic() +
+  labs(
+    x = "p-values",
+    y = 'Count of p-values'
+  )
+
+ggplot(NULL, aes(x=x, colour = distribution)) + 
+  stat_function(fun=dnorm, data = data.frame(x = c(-6,6), distribution = factor(1))) + 
+  stat_function(fun=dt, args = list( df = 20), data = data.frame(x = c(-6,6), distribution = factor(2)), linetype = "dashed") + 
+  scale_colour_manual(values = c("blue","red"), labels = c("Normal","T-Distribution"))
+
+
+my.data <- rt(n.rand, df = 20)
+
+p.df.m <- assignVector(my.data, n = n.test)
+
+ggplot(p.df.m, aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(variable ~ ., scales = 'free_y') +
+  xlim(0,1) +
+  theme_classic() +
+  labs(
+    x = "p-values",
+    y = 'Count of p-values'
+  )
+
+# testin the tails
+
+my.data <- rt(n.rand, df = 20)
+my.data2 <- rnorm(n.rand)
+
+my.data <- my.data[which(my.data < 3 & my.data > -3)]
+
+my.data <- c(my.data, my.data2[which(my.data2 < -3 | my.data2 > 3)])
+
+p.df.m <- assignVector(my.data, n = n.test)
+
+ggplot(p.df.m, aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(variable ~ ., scales = 'free_y') +
+  xlim(0,1) +
+  theme_classic() +
+  labs(
+    x = "p-values",
+    y = 'Count of p-values'
+  )
+
+
+my.data <- rnorm(n.rand)
+my.data2 <- rt(n.rand, df = 20)
+
+my.data <- my.data[which(my.data < 3 & my.data > -3)]
+
+my.data <- c(my.data, my.data2[which(my.data2 < -3 | my.data2 > 3)])
+
+
+p.df.m <- assignVector(my.data, n = n.test)
+
+ggplot(p.df.m, aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(variable ~ ., scales = 'free_y') +
+  xlim(0,1) +
+  theme_classic() +
+  labs(
+    x = "p-values",
+    y = 'Count of p-values'
+  )
+
+my.data <- rlnorm(n.rand, 0, 0.4)
+
+
+p.df.m <- assignVector(my.data, n = n.test)
+
+ggplot(p.df.m, aes(x = value)) +
+  geom_histogram(binwidth = 0.1) +
+  facet_grid(variable ~ ., scales = 'free_y') +
+  xlim(0,1) +
+  theme_classic() +
+  labs(
+    x = "p-values",
+    y = 'Count of p-values'
+  )
+
+```
+
+**After working through this blog post, it is quite a mess without all steps worked out and things very poorly explained.  The code is also poorly written with reusing variable names over and over again., IMO**
+
