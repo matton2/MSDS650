@@ -1,0 +1,82 @@
+---
+title: "Week7 Assignment - Unsupervised Learning"
+author: "Matthew Onimus"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+library(DT)
+library(patchwork)
+
+set.seed(2)
+```
+
+## Exercise
+
+In the below code I will reproduce the example from the assignment text.
+
+```{r exercise}
+
+km <- kmeans(iris[,1:4], 3, nstart = 25)
+
+km
+
+table(km$cluster, iris$Species)
+
+```
+
+## Assignment
+
+Here we will apply a clustering algorithm to attempt to group baseball players by position based on some fielding stats
+
+```{r assignment}
+
+fielding2000 <- Lahman::Fielding %>% 
+  filter(yearID %in% 2000:2015) %>% 
+  select(POS, G, GS, InnOuts, PO, A, E, DP)
+
+kmField <- kmeans(fielding2000[,2:8], 7, nstart = 3)
+
+kmField
+
+table(kmField$cluster, fielding2000$POS)
+
+fieldKM <- fielding2000 %>% 
+  bind_cols(cluster = kmField$cluster) %>% 
+  mutate(cluster = as.factor(cluster))
+
+a <- ggplot(fieldKM, aes(x = InnOuts, y= PO, color = cluster)) +
+  geom_point() +
+  theme_classic() +
+  labs(
+    title = "K-Means Prediction of Position"
+  )
+
+b <- ggplot(fieldKM, aes(x = InnOuts, y = PO, color = POS)) +
+  geom_point() +
+  theme_classic() +
+  labs(
+    title = "Actual Position of Player"
+  )
+
+a/b
+
+```
+
+As you can see, the algorithm had a really though time of doing the prediction based upon PO and InnOuts.  These data are probably going to be really hard to predict by a Kmeans algorithm.  We will try one more model using a PCA
+
+```{r PCA}
+
+fieldingPCA <- prcomp(fielding2000[,2:8])
+
+summary(fieldingPCA)
+
+biplot(fieldingPCA)
+
+```
+
+PCA no better, this data and the vairables I selected just is not good enough to predict position.  Probably not a surprise at all.

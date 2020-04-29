@@ -1,0 +1,129 @@
+---
+title: "Integer Programming"
+author: "Matthew Onimus"
+date: "4/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lpSolveAPI)
+```
+
+## Example
+
+Here is the example assignment programmed in R using <code>lpSolveAPI</code> package.
+
+```{r example}
+# we have already loaded up lpSolveAPI in the set up chunk
+
+# base case, note the result is a little different as mine did not round
+
+lprec <- make.lp(2,2)
+
+set.bounds(lprec, lower= c(0, 0), upper = c(Inf, Inf))
+
+set.objfn(lprec, c(2.4, 9.3))
+add.constraint(lprec, c(8, 18), "<=", 420)
+
+lp.control(lprec, sense = 'max')
+
+lprec
+
+solve(lprec)
+
+get.objective(lprec)
+
+get.variables(lprec)
+
+# second set of variables
+
+lprec2 <- make.lp(0,2)
+
+set.bounds(lprec2, lower= c(0, 0), upper = c(Inf, Inf))
+
+set.objfn(lprec2, c(2.4, 9.3))
+add.constraint(lprec2, c(5, 18), "<=", 420)
+
+lp.control(lprec2, sense = 'max')
+
+lprec2
+
+solve(lprec2)
+
+get.objective(lprec2)
+
+get.variables(lprec2) # 5 was not enough to push my result, probably due to rounding
+
+# thrid set
+
+lprec3 <- make.lp(0,2)
+
+set.bounds(lprec3, lower= c(0, 0), upper = c(Inf, Inf))
+
+set.objfn(lprec3, c(3.36, 9.3))
+add.constraint(lprec3, c(8, 18), "<=", 420)
+
+lp.control(lprec3, sense = 'max')
+
+lprec3
+
+solve(lprec3)
+
+get.objective(lprec3)
+
+get.variables(lprec3)
+
+```
+
+## Assignment Problem (Cat food)
+
+Work adapted from https://www.coin-or.org/PuLP/CaseStudies/a_blending_problem.html
+
+```{r assignmentProblem}
+
+# Simplified problem first
+
+catFood <- make.lp(0, 2)
+
+set.bounds(catFood, lower = c(0,0), upper = c(Inf, Inf))
+
+set.objfn(catFood, c(0.013, 0.008))
+add.constraint(catFood, c(1, 1), "=", 100)
+add.constraint(catFood, c(0.1, 0.2), ">=", 8.0)
+add.constraint(catFood, c(0.08, 0.1), ">=", 6)
+add.constraint(catFood, c(0.001, 0.005), "<=", 2)
+add.constraint(catFood, c(0.002, 0.005), "<=", 0.4)
+
+catFood
+
+solve(catFood)
+
+get.objective(catFood)
+
+get.variables(catFood)
+
+# Full problem solve
+
+catFoodFull <- make.lp(0, 6)
+
+set.bounds(catFoodFull, lower = c(0,0,0,0,0,0), upper = c(Inf,Inf,Inf,Inf,Inf,Inf))
+
+set.objfn(catFoodFull, c(0.013, 0.008, 0.010, 0.002, 0.005, 0.001))
+add.constraint(catFoodFull, c(1, 1, 1, 1, 1, 1), "=", 100)
+add.constraint(catFoodFull, c(0.1, 0.2, 0.15, 0, 0.04, 0), ">=", 8.0)
+add.constraint(catFoodFull, c(0.08, 0.1, 0.11, 0.01, 0.01, 0), ">=", 6)
+add.constraint(catFoodFull, c(0.001, 0.005, 0.003, 0.1, 0.15, 0), "<=", 2)
+add.constraint(catFoodFull, c(0.002, 0.005, 0.007, 0.002, 0.008, 0), "<=", 0.4)
+
+catFoodFull
+
+solve(catFoodFull)
+
+get.objective(catFoodFull)
+
+get.variables(catFoodFull)
+
+```
+

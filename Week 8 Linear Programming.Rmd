@@ -1,0 +1,145 @@
+---
+title: "Linear Programming"
+author: "Matthew Onimus"
+date: "4/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lpSolveAPI)
+```
+
+## Exercises 1 and 2
+
+
+```{r exercise1}
+
+exer1 <- make.lp(0,2)
+
+lp.control(exer1, sense = 'max')
+
+set.objfn(exer1, c(1*500, 2*300))
+add.constraint(exer1, c(200, 100), "<=", 1200)
+add.constraint(exer1, c(1, 2), "<=", 12)
+add.constraint(exer1, c(1, 1), "<=", 10)
+
+exer1
+
+solve(exer1)
+
+get.objective(exer1)
+
+get.variables(exer1)
+
+```
+
+```{r exercise2}
+
+exer2 <- make.lp(0,2)
+
+lp.control(exer2, sense = 'max')
+
+set.objfn(exer2, c(2, 3))
+add.constraint(exer2, c(20, 10), "<=", 80)
+add.constraint(exer2, c(2, -1), ">=", 0)
+
+exer2
+
+solve(exer2)
+
+get.objective(exer2)
+
+get.variables(exer2)
+
+
+```
+
+# Assignment
+
+I have been known to play some daily fantsy sports and since I like to select my teams with data, I have build the following script to optimize my lineup.  If you are unfamiliar, in general, you are allotted a fixed amount of money to field a roster.  Each player has a different price depending how their stats and a number of other variables.  It is actually quite easy to build an optimized line up based on average points as demonstrated by the code below.
+
+```{r Assignment}
+
+library(stringr)
+library(lpSolve)
+
+data6 <- read_csv('DKSalaries.csv') %>% 
+  separate(Name, into = c('First Name', 'Last Name'), sep = " ", extra = 'merge') %>% 
+  mutate(Name = paste0(`First Name`, " " ,`Last Name`)) %>% 
+  select(ID, Name, Position, AvgPointsPerGame, Salary) %>% 
+  mutate(AvgPointsPerGame = ifelse(is.na(AvgPointsPerGame), 0, AvgPointsPerGame)) %>% 
+  filter(AvgPointsPerGame > 0) %>%
+  mutate(Position = ifelse(Position == 'C', '1B', Position)) 
+
+#Set up Indicies####
+
+P_ind <- which(data6[3]=='SP')
+F_ind <- which(data6[3]=="1B")
+S_ind <- which(data6[3]=='2B')
+SS_ind <- which(data6[3]=='SS')
+T_ind <- which(data6[3]=='3B')
+OF_ind <- which(data6[3]=='OF')
+
+#Create LineUp 1 Build Matrix, add Contraints, solve lp####
+
+A <- matrix(0, nrow = 13, ncol = nrow(data6))
+
+A[1, P_ind] <- 1
+A[2, F_ind] <- 1
+A[3, F_ind] <- 1
+A[4, S_ind] <- 1
+A[5, S_ind] <- 1
+A[6, SS_ind] <- 1
+A[7, SS_ind] <- 1
+A[8, T_ind] <- 1
+A[9, T_ind] <- 1
+A[10, OF_ind] <- 1
+A[11, OF_ind] <- 1
+A[12, ] <- 1 # assign all players a 1
+A[13, ] <- data6$Salary
+
+objective.in <- data6$AvgPointsPerGame #assign the objective
+const.mat <- A # assign the constraint matrix
+const.dir <- c("=", #Pitchers
+               ">=", #min First/Catcher
+               "<=", #max first
+               ">=", #min 2nd base
+               "<=", #max 2nd base
+               ">=", #min 3rd base
+               "<=", #max 3rd base
+               ">=", #min SS
+               "<=", #max SS
+               ">=", #min OF
+               "<=", #max OF
+               "=", #Total Players
+               "<=") #Salary
+const.rhs <- c(1, #Pitchers
+               1, #Min first/catcher
+               2, #Max first/catcher
+               1, #Min 2nd base
+               2, #Max 2nd base
+               1, #Min 3rd Base
+               2, #Max 3rd base
+               1, #Min SS
+               2, #Max SS
+               3, #Min OF
+               4, #Max OF
+               9, #Total Players
+               35000) #Total Salary
+
+sol_1 <- lp(direction = 'max', objective.in, const.mat, const.dir, const.rhs, all.bin = TRUE)
+
+sol_1
+
+inds <- which(sol_1$solution == 1)
+
+results <- data6[inds, ]
+
+results$lineup <- 1
+
+DT::datatable(results)
+
+```
+

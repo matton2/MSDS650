@@ -1,0 +1,113 @@
+---
+title: "Week7 Assignment - Supervised Learning"
+author: "Matthew Onimus"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+library(xgboost)
+library(DT)
+
+set.seed(2)
+
+```
+
+## Supervised Learning
+
+I have decided to use the some nfl data that was part of a tidy tuesday data setthat.  There are two datasets, one for attendance and the other for standings.  We will pull the data in and join the data to create one data frame.  As I will be doing some splits, I have already set my seed to 2 to ensure this is all reproducible.  Additionally, I am such an rstudio fanboy that I will be using the <code>tidyverse</code> and <cide>tidymodels</code> to build and test my models.  My model will be built using the xgboost model.
+
+```{r letsLearn}
+
+# pull the data in from github
+
+att <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-04/attendance.csv")
+stan <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-04/standings.csv")
+
+# join the data together
+
+nflAttend <- att %>% 
+  left_join(stan,
+            by = c("year", "team_name", "team"))
+
+# remember to look at your data!!
+
+summary(nflAttend)
+
+# i want to predict attendence and we have a lot of NAs in attendance, let's get rid of those
+
+nflAttendClean <- nflAttend %>% 
+  filter(!is.na(weekly_attendance))
+
+datatable(nflAttendClean)
+
+# there is a ton of really interesting data here, wins, make playoffs, etc.  we can make a ton of really cool plots here but that is not the purpose of this assignment but i can't help myself
+
+ggplot(nflAttendClean, aes(x = week, y = weekly_attendance, group = week)) +
+  geom_boxplot() + 
+  theme_classic()
+
+# Based on that plot, the data looks pretty consisent across week, let's just check by year as well
+
+ggplot(nflAttendClean, aes(x = week, y = weekly_attendance, group = week)) +
+  geom_boxplot() +
+  facet_wrap(~year) +
+  theme_classic()
+
+# those games in 2017, 2019, and 2019 make me a little worried but we will see what we can do
+
+# we will strip away all the stuff we dont care about for the model, i am going to keep weekly_attendance, team_name, year, week, playoffs, margin of victory, strentgh of schedule, and of course playoffs cause why not.  Since i will be using an xgboost model, i am going to need to change that team name into a numeric 
+
+nflModel <- nflAttendClean %>% 
+  select(weekly_attendance, team_name, year, week, margin_of_victory, strength_of_schedule, playoffs) %>% 
+  mutate(team_name = as.factor(team_name),
+         team_name = as.numeric(team_name),
+         playoffs = as.factor(playoffs),
+         playoffs = as.numeric(playoffs))
+
+head(nflModel)
+
+# let's make a training set and a test set
+
+attSplit <- nflModel %>% 
+  initial_split(strata = playoffs)
+
+trainDF <- training(attSplit)
+testDF <- testing(attSplit)
+
+
+trainBinData <- xgb.DMatrix(as.matrix(trainDF[, -1]), label = trainDF$weekly_attendance)
+
+
+# train with an base xg (regression) model
+xgModel <- xgb.train(
+  data = trainBinData, nrounds = 50
+)
+
+# if you want to see model, uncomment below line
+#tidypredict::tidypredict_fit(xgModel)
+
+testBinData <- xgb.DMatrix(as.matrix(testDF[, -1]), label = testDF$weekly_attendance)
+
+
+checkRMSE <- testDF %>% 
+  select(weekly_attendance) %>% 
+  mutate(preds = predict(xgModel, testBinData),
+         error = weekly_attendance - preds)
+
+# Our RMSE was about 8,000 fans per game with no tuning at all, guess not too bad
+rmse_vec(testDF$weekly_attendance, predict(xgModel, testBinData))
+
+# Our MAE was about 6,000 fans per game also with no tuning, not too too bad I guess
+mae_vec(testDF$weekly_attendance, predict(xgModel, testBinData))
+
+
+```
+
+## Questions
+
+Supervised algorithms attempt to fit different algoithms with tuning parameters to offer the most accurate predictions based on a known (supervised) result.  There a number of different algothims out there, linear, logistics, tress, etc.  The <code>carat</code> package was the standard for quite some time.  The new package on the block is <code>tidymodels</code> and I really enjoy who streamlined it is compared to carat.  The typical measures are RMSE (root mean square error) and MAE(mean absolute error).  In generaly MAE is more tolerant to really poor measurements while RMSE can be swayed by a few very off predictions.
+
